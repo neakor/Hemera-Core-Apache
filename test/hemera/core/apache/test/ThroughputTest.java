@@ -1,4 +1,4 @@
-package hemera.ext.apache.test;
+package hemera.core.apache.test;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
