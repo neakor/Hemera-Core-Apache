@@ -2,5 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="test"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Hemera-Core-Environment"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Hemera-Core-Execution"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Hemera-Core-Structure"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Hemera-Core-Utility"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Hemera-Core-Apache"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Hemera-Core-Structure"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
