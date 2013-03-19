@@ -118,30 +118,12 @@ class RequestHandler implements HttpRequestHandler {
 			default: throw new IllegalArgumentException("Unsupported redirect behavior");
 			}
 		} catch (final UnsupportedOperationException e) {
-			// Return service not available response.
-			httpResponse.setStatusCode(EHttpStatus.C404_NotFound.code);
-			try {
-				final JSONObject exceptionJSON = new JSONObject();
-				exceptionJSON.put("exception", "No such service provided: " + e.getMessage());
-				httpResponse.setEntity(new StringEntity(exceptionJSON.toString()));
-			} catch (final Exception ignore) {}
+			this.setUncaughtExceptionResponse(httpResponse, EHttpStatus.C404_NotFound, e);
 		} catch (final IllegalArgumentException e) {
-			// Return bad request response.
-			httpResponse.setStatusCode(EHttpStatus.C400_BadRequest.code);
-			try {
-				final JSONObject exceptionJSON = new JSONObject();
-				exceptionJSON.put("exception", "Invalid request: " + e.getMessage());
-				httpResponse.setEntity(new StringEntity(exceptionJSON.toString()));
-			} catch (final Exception ignore) {}
+			this.setUncaughtExceptionResponse(httpResponse, EHttpStatus.C400_BadRequest, e);
 		} catch (final Exception e) {
 			this.handler.handle(e);
-			// Return exception response.
-			httpResponse.setStatusCode(EHttpStatus.C500_InternalServerError.code);
-			try {
-				final JSONObject exceptionJSON = new JSONObject();
-				exceptionJSON.put("exception", "A server error has occurred.");
-				httpResponse.setEntity(new StringEntity(exceptionJSON.toString()));
-			} catch (final Exception ignore) {}
+			this.setUncaughtExceptionResponse(httpResponse, EHttpStatus.C500_InternalServerError, e);
 		}
 	}
 	
@@ -168,10 +150,7 @@ class RequestHandler implements HttpRequestHandler {
 		final IResponse response = processor.process(request);
 		// Processor inactive.
 		if (response == null) {
-			httpResponse.setStatusCode(EHttpStatus.C503_ServiceUnavailable.code);
-			final JSONObject exceptionJSON = new JSONObject();
-			exceptionJSON.put("exception", "Requested service has been disabled.");
-			httpResponse.setEntity(new StringEntity(exceptionJSON.toString()));
+			this.setUncaughtExceptionResponse(httpResponse, EHttpStatus.C503_ServiceUnavailable, null);
 		}
 		// Commit response.
 		else {
@@ -192,5 +171,32 @@ class RequestHandler implements HttpRequestHandler {
 			}
 		}
 		return response;
+	}
+	
+	/**
+	 * Set the exception response with the given Http
+	 * response, status and exception.
+	 * @param httpResponse The <code>HttpResponse</code>
+	 * to set to.
+	 * @param status The <code>EHttpStatus</code> value.
+	 * @param exception The optional <code>Exception</code>
+	 * to include in the error message.
+	 */
+	private void setUncaughtExceptionResponse(final HttpResponse httpResponse, final EHttpStatus status, final Exception exception) {
+		httpResponse.setStatusCode(status.code);
+		try {
+			final JSONObject exceptionJSON = new JSONObject();
+			exceptionJSON.put("http_status", status.name());
+			if (status == EHttpStatus.C404_NotFound) {
+				exceptionJSON.put("exception", "No such service provided: " + exception.getMessage());
+			} else if (status == EHttpStatus.C400_BadRequest) {
+				exceptionJSON.put("exception", "Invalid request: " + exception.getMessage());
+			} else if (status == EHttpStatus.C500_InternalServerError) {
+				exceptionJSON.put("exception", "A server error has occurred.");
+			} else if (status == EHttpStatus.C503_ServiceUnavailable) {
+				exceptionJSON.put("exception", "Requested service has been disabled.");
+			}
+			httpResponse.setEntity(new StringEntity(exceptionJSON.toString()));
+		} catch (final Exception ignore) {}
 	}
 }
