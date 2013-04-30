@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.apache.http.HttpRequest;
 import org.apache.http.NameValuePair;
 import org.apache.http.ParseException;
 import org.apache.http.client.utils.URLEncodedUtils;
+import org.apache.http.util.EntityUtils;
 
 /**
  * <code>HttpRequestParser</code> defines the HTTP
@@ -74,47 +76,30 @@ public class HttpRequestParser {
 	 * failed.
 	 * @throws IOException If entity retrieval failed.
 	 * @throws ParseException If entity parsing failed.
+	 * @throws URISyntaxException If given request's URI
+	 * has syntax error.
 	 */
-	private void parseBody(final HttpRequest request, final Map<String, Object> store) throws FileUploadException, ParseException, IOException {
+	private void parseBody(final HttpRequest request, final Map<String, Object> store) throws FileUploadException, ParseException, IOException, URISyntaxException {
 		// Request does not have an entity.
 		if (!(request instanceof HttpEntityEnclosingRequest)) return;
 		else {
-			final HttpEntityEnclosingRequest entityrequest = (HttpEntityEnclosingRequest)request;
-			final HttpEntity entity = entityrequest.getEntity();
+			final HttpEntityEnclosingRequest entityRequest = (HttpEntityEnclosingRequest)request;
+			final HttpEntity entity = entityRequest.getEntity();
 			if (entity == null) return;
 			// Parse based on entity content type.
 			final Header typeheader = entity.getContentType();
-			final String contenttype = (typeheader==null) ? "" : typeheader.getValue();
-			if (contenttype.contains("multipart")) {
-				this.parseMultipartBody(entityrequest, store);
+			final String contentType = (typeheader==null) ? "" : typeheader.getValue();
+			if (contentType.contains("multipart")) {
+				this.parseMultipartBody(entityRequest, store);
 			}
 			// Parse as URL encoded.
 			else {
-				this.parseArguments(entity, store);
-			}
-		}
-	}
-
-	/**
-	 * Parse the given entity into arguments and store
-	 * them in the given storage.
-	 * @param entity The <code>HttpEntity</code> to be
-	 * parsed.
-	 * @param store The storage <code>Map</code> of
-	 * <code>String</code> key to <code>Object</code>
-	 * value pairs of the request contents.
-	 * @throws IOException If parsing entity failed.
-	 */
-	private void parseArguments(final HttpEntity entity, final Map<String, Object> store) throws IOException {
-		final List<NameValuePair> uriArguments = URLEncodedUtils.parse(entity);
-		if (uriArguments != null && !uriArguments.isEmpty()) {
-			final int size = uriArguments.size();
-			for (int i = 0; i < size; i++) {
-				final NameValuePair pair = uriArguments.get(i);
-				// May be null since it could be part of the URI.
-				if (pair.getName() != null && pair.getValue() != null) {
-					store.put(pair.getName(), pair.getValue());
-				}
+				final String entityContent = EntityUtils.toString(entity);
+				final Header encodingHeader = entity.getContentEncoding();
+				final String encoding = (encodingHeader==null) ? "UTF-8" : encodingHeader.getValue();
+				this.parseArguments(entityContent, encoding, store);
+				// Note, parsing the entity directly using URLEncodedUtils.parse(Entity)
+				// does not seem to parse properly sometimes.
 			}
 		}
 	}
@@ -131,6 +116,30 @@ public class HttpRequestParser {
 	 */
 	private void parseArguments(final URI uri, final String encoding, final Map<String, Object> store) {
 		final List<NameValuePair> uriArguments = URLEncodedUtils.parse(uri, encoding);
+		if (uriArguments != null && !uriArguments.isEmpty()) {
+			final int size = uriArguments.size();
+			for (int i = 0; i < size; i++) {
+				final NameValuePair pair = uriArguments.get(i);
+				// May be null since it could be part of the URI.
+				if (pair.getName() != null && pair.getValue() != null) {
+					store.put(pair.getName(), pair.getValue());
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Parse the given URL encoded String into arguments
+	 * and store them in the given storage.
+	 * @param content The <code>String</code> to be parsed.
+	 * @param encoding The <code>String</code> encoding
+	 * name.
+	 * @param store The storage <code>Map</code> of
+	 * <code>String</code> key to <code>Object</code>
+	 * value pairs of the request contents.
+	 */
+	private void parseArguments(final String content, final String encoding, final Map<String, Object> store) {
+		final List<NameValuePair> uriArguments = URLEncodedUtils.parse(content, Charset.forName(encoding));
 		if (uriArguments != null && !uriArguments.isEmpty()) {
 			final int size = uriArguments.size();
 			for (int i = 0; i < size; i++) {
