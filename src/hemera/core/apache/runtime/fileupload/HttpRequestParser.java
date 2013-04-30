@@ -1,11 +1,10 @@
 package hemera.core.apache.runtime.fileupload;
 
-import hemera.core.utility.uri.URIParser;
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.fileupload.FileItemIterator;
@@ -18,7 +17,9 @@ import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
+import org.apache.http.NameValuePair;
 import org.apache.http.ParseException;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.util.EntityUtils;
 
 /**
@@ -28,7 +29,7 @@ import org.apache.http.util.EntityUtils;
  * retrieve the contained contents data.
  *
  * @author Yi Wang (Neakor)
- * @version 1.0.0
+ * @version 1.0.1
  */
 public class HttpRequestParser {
 
@@ -50,13 +51,12 @@ public class HttpRequestParser {
 		final Map<String, Object> arguments = new HashMap<String, Object>();
 		// Parse request URI arguments.
 		final String uri = httpRequest.getRequestLine().getUri();
-		final Map<String, String> uriarguments = URIParser.instance.parseURIArguments(uri);
-		if (uriarguments != null) arguments.putAll(uriarguments);
+		this.parseArguments(uri, "UTF-8", arguments);
 		// Parse request body arguments.
 		this.parseBody(httpRequest, arguments);
 		return arguments;
 	}
-
+	
 	/**
 	 * Parse the request body to retrieve the contents
 	 * and store them in the given map.
@@ -87,12 +87,35 @@ public class HttpRequestParser {
 				this.parseMultipartBody(entityrequest, store);
 			} else {
 				// Parse as URL encoded.
-				final String uricontents = EntityUtils.toString(entity);
+				final String uriContents = EntityUtils.toString(entity);
 				final Header encodingHeader = entity.getContentEncoding();
 				final String encoding = (encodingHeader==null) ? "UTF-8" : encodingHeader.getValue();
-				final String decoded = URLDecoder.decode(uricontents, encoding);
-				final Map<String, String> uriarguments = URIParser.instance.parseURIContentsArguments(decoded);
-				if (uriarguments != null) store.putAll(uriarguments);
+				this.parseArguments(uriContents, encoding, store);
+			}
+		}
+	}
+
+	/**
+	 * Parse the given URL encoded string into arguments
+	 * and store them in the given storage.
+	 * @param encodedString The <code>String</code> URL
+	 * encoded string to parse.
+	 * @param encoding The <code>String</code> encoding
+	 * name.
+	 * @param store The storage <code>Map</code> of
+	 * <code>String</code> key to <code>Object</code>
+	 * value pairs of the request contents.
+	 */
+	private void parseArguments(final String encodedString, final String encoding, final Map<String, Object> store) {
+		final List<NameValuePair> uriArguments = URLEncodedUtils.parse(encodedString, Charset.forName(encoding));
+		if (uriArguments != null && !uriArguments.isEmpty()) {
+			final int size = uriArguments.size();
+			for (int i = 0; i < size; i++) {
+				final NameValuePair pair = uriArguments.get(i);
+				// May be null since it could be part of the URI.
+				if (pair.getName() != null && pair.getValue() != null) {
+					store.put(pair.getName(), pair.getValue());
+				}
 			}
 		}
 	}
