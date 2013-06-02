@@ -10,7 +10,6 @@ import hemera.core.structure.interfaces.IResource;
 import hemera.core.structure.interfaces.IResourceRegistry;
 import hemera.core.structure.interfaces.IResponse;
 import hemera.core.utility.uri.RESTURI;
-import hemera.core.utility.uri.URIParser;
 
 import java.util.Map;
 
@@ -44,7 +43,7 @@ import org.json.JSONObject;
  * capabilities.
  *
  * @author Yi Wang (Neakor)
- * @version 1.0.0
+ * @version 1.0.4
  */
 class RequestHandler implements HttpRequestHandler {
 	/**
@@ -80,13 +79,14 @@ class RequestHandler implements HttpRequestHandler {
 		try {
 			// Parse URI.
 			final String uriStr = httpRequest.getRequestLine().getUri();
-			final RESTURI uri = URIParser.instance.parseURI(uriStr);
+			final RESTURI uri = new RESTURI(uriStr);
 			// Retrieve resource.
-			final IResource resource = this.registry.getResource(uri.resource);
+			final IResource resource = this.registry.getResource(uri);
 			if (resource == null) throw new UnsupportedOperationException(uriStr);
 			// Retrieve processor.
+			final String[] path = uri.getElementArray();
 			final EHttpMethod method = EHttpMethod.parse(httpRequest.getRequestLine().getMethod());
-			final IProcessor processor = resource.getProcessor(uri.elements, method);
+			final IProcessor processor = resource.getProcessor(path, method);
 			if (processor == null) throw new UnsupportedOperationException(uriStr);
 			// Parse request arguments.
 			final Map<String, Object> arguments = this.parser.parseArguments(httpRequest);
@@ -94,7 +94,7 @@ class RequestHandler implements HttpRequestHandler {
 			final Class<? extends IRequest> requestclass = processor.getRequestType();
 			final IRequest request = requestclass.newInstance();
 			try {
-				request.parse(uri.elements, arguments);
+				request.parse(path, arguments);
 			} catch (final Exception e) {
 				throw new IllegalArgumentException(e.getMessage());
 			}
