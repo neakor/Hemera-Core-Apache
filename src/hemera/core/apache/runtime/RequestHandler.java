@@ -43,7 +43,7 @@ import org.json.JSONObject;
  * capabilities.
  *
  * @author Yi Wang (Neakor)
- * @version 1.0.4
+ * @version 1.0.5
  */
 class RequestHandler implements HttpRequestHandler {
 	/**
@@ -80,12 +80,12 @@ class RequestHandler implements HttpRequestHandler {
 			// Parse URI.
 			final String uriStr = httpRequest.getRequestLine().getUri();
 			final RESTURI uri = new RESTURI(uriStr);
+			final EHttpMethod method = EHttpMethod.parse(httpRequest.getRequestLine().getMethod());
 			// Retrieve resource.
-			final IResource resource = this.registry.getResource(uri);
+			final IResource resource = this.registry.getResource(uri, method);
 			if (resource == null) throw new UnsupportedOperationException(uriStr);
 			// Retrieve processor.
 			final String[] path = uri.getElementArray();
-			final EHttpMethod method = EHttpMethod.parse(httpRequest.getRequestLine().getMethod());
 			final IProcessor processor = resource.getProcessor(path, method);
 			if (processor == null) throw new UnsupportedOperationException(uriStr);
 			// Parse request arguments.
