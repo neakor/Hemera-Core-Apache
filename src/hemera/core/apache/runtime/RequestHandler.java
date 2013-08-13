@@ -9,8 +9,10 @@ import hemera.core.structure.interfaces.IRequest;
 import hemera.core.structure.interfaces.IResource;
 import hemera.core.structure.interfaces.IResourceRegistry;
 import hemera.core.structure.interfaces.IResponse;
+import hemera.core.utility.logging.FileLogger;
 import hemera.core.utility.uri.RESTURI;
 
+import java.net.SocketTimeoutException;
 import java.util.Map;
 
 import org.apache.http.HttpRequest;
@@ -43,7 +45,7 @@ import org.json.JSONObject;
  * capabilities.
  *
  * @author Yi Wang (Neakor)
- * @version 1.0.5
+ * @version 1.0.7
  */
 class RequestHandler implements HttpRequestHandler {
 	/**
@@ -59,6 +61,10 @@ class RequestHandler implements HttpRequestHandler {
 	 * The <code>HttpRequestParser</code> instance.
 	 */
 	private final HttpRequestParser parser;
+	/**
+	 * The <code>FileLogger</code> instance.
+	 */
+	private final FileLogger logger;
 
 	/**
 	 * Constructor of <code>RequestHandler</code>.
@@ -71,6 +77,7 @@ class RequestHandler implements HttpRequestHandler {
 		this.handler = handler;
 		this.registry = registry;
 		this.parser = new HttpRequestParser();
+		this.logger = FileLogger.getLogger(this.getClass());
 	}
 
 	@Override
@@ -117,6 +124,9 @@ class RequestHandler implements HttpRequestHandler {
 				break;
 			default: throw new IllegalArgumentException("Unsupported redirect behavior");
 			}
+		} catch (final SocketTimeoutException e) {
+			// Log warning if client timed out.
+			this.logger.warning("Client socket timed out.");
 		} catch (final UnsupportedOperationException e) {
 			this.setUncaughtExceptionResponse(httpResponse, EHttpStatus.C404_NotFound, e);
 		} catch (final IllegalArgumentException e) {
